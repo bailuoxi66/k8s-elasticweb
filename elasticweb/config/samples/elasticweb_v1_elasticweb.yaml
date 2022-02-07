@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dev
+  labels:
+    name: dev
+---
+
+
+apiVersion: elasticweb.example.com/v1
+kind: ElasticWeb
+metadata:
+  namespace: dev
+  name: elasticweb-sample
+spec:
+  # TODO(user): Add fields here
+  # Add fields here
+  image: tomcat:8.0.18-jre8
+  port: 30004
+  singlePodQPS: 500
+  totalQPS: 600
