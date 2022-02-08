@@ -239,15 +239,17 @@ func createServiceIfNotExists(ctx context.Context, r *ElasticWebReconciler, elas
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{{
-				Port:     *elasticWeb.Spec.Port,
-				Protocol: elasticWeb.Spec.Protocol,
-				NodePort: *elasticWeb.Spec.NodePort,
+				Port:       *elasticWeb.Spec.Port,
+				Protocol:   *elasticWeb.Spec.Protocol,
+				TargetPort: *elasticWeb.Spec.TargetPort,
+				NodePort:   *elasticWeb.Spec.NodePort,
 			},
 			},
 			Selector: map[string]string{
 				"app": APP_NAME,
 			},
-			Type: "LoadBalancer",
+			//Type: "LoadBalancer",
+			Type: "NodePort",
 		},
 	}
 
@@ -310,7 +312,7 @@ func createDeployment(ctx context.Context, r *ElasticWebReconciler, elasticWeb *
 								{
 									Name:          "http",
 									Protocol:      corev1.ProtocolSCTP,
-									ContainerPort: CONTAINER_PORT,
+									ContainerPort: *elasticWeb.Spec.PodPort,
 								},
 							},
 							Resources: elasticWeb.Spec.Resources,

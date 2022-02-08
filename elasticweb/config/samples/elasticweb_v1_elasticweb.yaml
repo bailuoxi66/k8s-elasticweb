@@ -18,11 +18,13 @@ spec:
   image: tomcat:8.0.18-jre8
   nodePort: 30004
   port: 8080
+  targetPort: 8080
+  podPort: 8080
   singlePodQPS: 500
   totalQPS: 600
   resources:
     limits:
-      cpu: 500m
+      cpu: 400m
       memory: 500Mi
     requests:
       cpu: 100m

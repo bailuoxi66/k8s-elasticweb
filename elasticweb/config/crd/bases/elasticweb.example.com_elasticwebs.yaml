@@ -42,6 +42,9 @@ spec:
               nodePort:
                 format: int32
                 type: integer
+              podPort:
+                format: int32
+                type: integer
               port:
                 format: int32
                 type: integer
@@ -79,6 +82,11 @@ spec:
                 description: 单个pod的QPS上限
                 format: int32
                 type: integer
+              targetPort:
+                anyOf:
+                - type: integer
+                - type: string
+                x-kubernetes-int-or-string: true
               totalQPS:
                 description: 当前整个业务的总QPS
                 format: int32
@@ -86,9 +94,11 @@ spec:
             required:
             - image
             - nodePort
+            - podPort
             - port
             - protocol
             - singlePodQPS
+            - targetPort
             - totalQPS
             type: object
           status:
