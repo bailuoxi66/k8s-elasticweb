@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strconv"
 )
@@ -10,13 +11,20 @@ import (
 type ElasticWebSpec struct {
 	// 业务服务对应的镜像，包括名称:tag
 	Image string `json:"image"`
-	// service占用的宿主机端口，外部请求通过此端口访问pod的服务
-	Port *int32 `json:"port"`
+
+	NodePort *int32 `json:"nodePort"`
+	Port     *int32 `json:"port"`
 
 	// 单个pod的QPS上限
 	SinglePodQPS *int32 `json:"singlePodQPS"`
 	// 当前整个业务的总QPS
 	TotalQPS *int32 `json:"totalQPS"`
+
+	// 资源限制
+	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// Service 支持的协议类型
+	Protocol corev1.Protocol `json:"protocol"`
 }
 
 // 实际状态，该数据结构中的值都是业务代码计算出来的

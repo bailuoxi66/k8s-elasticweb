@@ -39,10 +39,42 @@ spec:
               image:
                 description: 业务服务对应的镜像，包括名称:tag
                 type: string
-              port:
-                description: service占用的宿主机端口，外部请求通过此端口访问pod的服务
+              nodePort:
                 format: int32
                 type: integer
+              port:
+                format: int32
+                type: integer
+              protocol:
+                default: TCP
+                description: Service 支持的协议类型
+                type: string
+              resources:
+                description: 资源限制
+                properties:
+                  limits:
+                    additionalProperties:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                      x-kubernetes-int-or-string: true
+                    description: 'Limits describes the maximum amount of compute resources
+                      allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                    type: object
+                  requests:
+                    additionalProperties:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                      x-kubernetes-int-or-string: true
+                    description: 'Requests describes the minimum amount of compute
+                      resources required. If Requests is omitted for a container,
+                      it defaults to Limits if that is explicitly specified, otherwise
+                      to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                    type: object
+                type: object
               singlePodQPS:
                 description: 单个pod的QPS上限
                 format: int32
@@ -53,7 +85,9 @@ spec:
                 type: integer
             required:
             - image
+            - nodePort
             - port
+            - protocol
             - singlePodQPS
             - totalQPS
             type: object

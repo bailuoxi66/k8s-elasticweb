@@ -16,6 +16,15 @@ spec:
   # TODO(user): Add fields here
   # Add fields here
   image: tomcat:8.0.18-jre8
-  port: 30004
+  nodePort: 30004
+  port: 8080
   singlePodQPS: 500
   totalQPS: 600
+  resources:
+    limits:
+      cpu: 500m
+      memory: 500Mi
+    requests:
+      cpu: 100m
+      memory: 100Mi
+  protocol: TCP

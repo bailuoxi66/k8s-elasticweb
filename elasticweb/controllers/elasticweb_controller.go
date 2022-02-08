@@ -23,7 +23,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
@@ -37,10 +36,11 @@ import (
 )
 
 const (
-	// deployment中的APP标签名
-	APP_NAME = "elastic-app"
+
 	// tomcat容器的端口号
 	CONTAINER_PORT = 8080
+	// deployment中的APP标签名
+	APP_NAME = "elastic-app"
 	// 单个POD的CPU资源申请
 	CPU_REQUEST = "100m"
 	// 单个POD的CPU资源上限
@@ -239,15 +239,15 @@ func createServiceIfNotExists(ctx context.Context, r *ElasticWebReconciler, elas
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{{
-				Name:     "http",
-				Port:     8080,
-				NodePort: *elasticWeb.Spec.Port,
+				Port:     *elasticWeb.Spec.Port,
+				Protocol: elasticWeb.Spec.Protocol,
+				NodePort: *elasticWeb.Spec.NodePort,
 			},
 			},
 			Selector: map[string]string{
 				"app": APP_NAME,
 			},
-			Type: corev1.ServiceTypeNodePort,
+			Type: "LoadBalancer",
 		},
 	}
 
@@ -313,16 +313,7 @@ func createDeployment(ctx context.Context, r *ElasticWebReconciler, elasticWeb *
 									ContainerPort: CONTAINER_PORT,
 								},
 							},
-							Resources: corev1.ResourceRequirements{
-								Requests: corev1.ResourceList{
-									"cpu":    resource.MustParse(CPU_REQUEST),
-									"memory": resource.MustParse(MEM_REQUEST),
-								},
-								Limits: corev1.ResourceList{
-									"cpu":    resource.MustParse(CPU_LIMIT),
-									"memory": resource.MustParse(MEM_LIMIT),
-								},
-							},
+							Resources: elasticWeb.Spec.Resources,
 						},
 					},
 				},
