@@ -17,11 +17,11 @@ spec:
   # Add fields here
   image: tomcat:8.0.18-jre8
   nodePort: 30004
-  port: 8080
+  port: 8081
   targetPort: 8080
   podPort: 8080
   singlePodQPS: 500
-  totalQPS: 600
+  totalQPS: 700
   resources:
     limits:
       cpu: 400m
