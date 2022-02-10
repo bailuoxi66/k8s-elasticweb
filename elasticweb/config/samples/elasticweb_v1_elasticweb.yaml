@@ -24,7 +24,7 @@ spec:
   totalQPS: 700
   resources:
     limits:
-      cpu: 400m
+      cpu: 800m
       memory: 500Mi
     requests:
       cpu: 100m

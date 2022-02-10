@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -149,8 +150,20 @@ func (r *ElasticWebReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 	}
 
-	// 如果查到了deployment，并且没有返回错误，就走下面的逻辑
+	elasticWeb := *instance
+	if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].Resources, elasticWeb.Spec.Resources) {
+		// Pod更新资源  每一次都进行更新
+		globalLog.Info("8. update resources")
+		deployment.Spec.Template.Spec.Containers[0].Resources = elasticWeb.Spec.Resources
+		// 通过客户端更新deployment
+		if err = r.Update(ctx, deployment); err != nil {
+			globalLog.Error(err, "8. update deployment replicas error")
+			// 返回错误信息给外部
+			return ctrl.Result{}, err
+		}
+	}
 
+	// 如果查到了deployment，并且没有返回错误，就走下面的逻辑
 	// 根据单QPS和总QPS计算期望的副本数
 	expectReplicas := getExpectReplicas(instance)
 

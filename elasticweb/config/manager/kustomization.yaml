@@ -13,4 +13,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: dockerhubyu/elasticweb
-  newTag: "013"
+  newTag: "014"
