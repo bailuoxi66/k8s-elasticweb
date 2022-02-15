@@ -1,0 +1,15 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: elasticweb-sample-service-monitor
+  labels:
+    app: elasticweb-sample
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: elasticweb-sample
+  endpoints:
+  - port: metric-traffic
+    path: "/actuator/prometheus"

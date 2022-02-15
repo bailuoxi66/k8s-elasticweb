@@ -10,13 +10,15 @@ import (
 
 // 期望状态
 type ElasticWebSpec struct {
+	Name string `json:"name"`
 	// 业务服务对应的镜像，包括名称:tag
 	Image string `json:"image"`
 
-	NodePort   *int32              `json:"nodePort"`
-	TargetPort *intstr.IntOrString `json:"targetPort"`
-	PodPort    *int32              `json:"podPort"`
-	Port       *int32              `json:"port"`
+	NodePort    *int32              `json:"nodePort"`
+	TargetPort  *intstr.IntOrString `json:"targetPort"`
+	MTargetPort *intstr.IntOrString `json:"mtargetPort"`
+	PodPort     *int32              `json:"podPort"`
+	Port        *int32              `json:"port"`
 
 	// 单个pod的QPS上限
 	SinglePodQPS *int32 `json:"singlePodQPS"`

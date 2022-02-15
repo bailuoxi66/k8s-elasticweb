@@ -99,6 +99,11 @@ func (in *ElasticWebSpec) DeepCopyInto(out *ElasticWebSpec) {
 		*out = new(intstr.IntOrString)
 		**out = **in
 	}
+	if in.MTargetPort != nil {
+		in, out := &in.MTargetPort, &out.MTargetPort
+		*out = new(intstr.IntOrString)
+		**out = **in
+	}
 	if in.PodPort != nil {
 		in, out := &in.PodPort, &out.PodPort
 		*out = new(int32)

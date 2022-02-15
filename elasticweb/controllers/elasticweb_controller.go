@@ -18,9 +18,14 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"strconv"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -31,6 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"time"
 
 	elasticwebv1 "github.com/elasticweb/api/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -41,7 +47,7 @@ const (
 	// tomcat容器的端口号
 	CONTAINER_PORT = 8080
 	// deployment中的APP标签名
-	APP_NAME = "elastic-app"
+	APP_NAME = "elasticweb-sample"
 	// 单个POD的CPU资源申请
 	CPU_REQUEST = "100m"
 	// 单个POD的CPU资源上限
@@ -51,6 +57,19 @@ const (
 	// 单个POD的内存资源上限
 	MEM_LIMIT = "512Mi"
 )
+
+type Res struct {
+	Status string `json:"status"`
+	Data   Datas  `json:"data"`
+}
+type Datas struct {
+	ResultType string        `json:"resultType"`
+	Result     []ValueMetric `json:"result"`
+}
+
+type ValueMetric struct {
+	Value []string `json:"value"`
+}
 
 // ElasticWebReconciler reconciles a ElasticWeb object
 type ElasticWebReconciler struct {
@@ -75,6 +94,10 @@ type ElasticWebReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.10.0/pkg/reconcile
 
 var globalLog = log.Log.WithName("global")
+
+func init() {
+	//go timer()
+}
 
 func (r *ElasticWebReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
@@ -245,24 +268,34 @@ func createServiceIfNotExists(ctx context.Context, r *ElasticWebReconciler, elas
 	}
 
 	// 实例化一个数据结构
+	// 初始化 + 赋值一体化
+	m := map[string]string{
+		"release": "prometheus",
+		"app":     "elasticweb-sample",
+	}
+
 	service = &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: elasticWeb.Namespace,
 			Name:      elasticWeb.Name,
+			Labels:    m,
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{{
-				Port:       *elasticWeb.Spec.Port,
-				Protocol:   *elasticWeb.Spec.Protocol,
+				Port:       8080,
+				Protocol:   "TCP",
 				TargetPort: *elasticWeb.Spec.TargetPort,
-				NodePort:   *elasticWeb.Spec.NodePort,
+				Name:       "http-traffic",
+			}, {
+				Port:       8090,
+				Protocol:   "TCP",
+				TargetPort: *elasticWeb.Spec.MTargetPort,
+				Name:       "metric-traffic",
 			},
 			},
 			Selector: map[string]string{
 				"app": APP_NAME,
 			},
-			//Type: "LoadBalancer",
-			Type: "NodePort",
 		},
 	}
 
@@ -294,10 +327,14 @@ func createDeployment(ctx context.Context, r *ElasticWebReconciler, elasticWeb *
 	globalLog.Info(fmt.Sprintf("expectReplicas [%d]", expectReplicas))
 
 	// 实例化一个数据结构
+	m := map[string]string{
+		"app": "elasticweb-sample",
+	}
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: elasticWeb.Namespace,
 			Name:      elasticWeb.Name,
+			Labels:    m,
 		},
 		Spec: appsv1.DeploymentSpec{
 			// 副本数是计算出来的
@@ -326,6 +363,9 @@ func createDeployment(ctx context.Context, r *ElasticWebReconciler, elasticWeb *
 									Name:          "http",
 									Protocol:      corev1.ProtocolSCTP,
 									ContainerPort: *elasticWeb.Spec.PodPort,
+								},
+								{
+									ContainerPort: 8090,
 								},
 							},
 							Resources: elasticWeb.Spec.Resources,
@@ -381,4 +421,66 @@ func updateStatus(ctx context.Context, r *ElasticWebReconciler, elasticWeb *elas
 	}
 
 	return nil
+}
+
+func timer() {
+	t := time.NewTicker(3 * time.Second)
+	defer t.Stop()
+	time.Sleep(4 * time.Second)
+
+	for {
+		select {
+		case <-t.C:
+			curRes()
+		}
+	}
+}
+
+func curRes() {
+	timeUnix := time.Now().Unix()
+	preVal := getTotal(timeUnix - 5)
+	val := getTotal(timeUnix)
+
+	cur, err := strconv.ParseInt(val, 10, 64)
+	if err != nil {
+		fmt.Println("strconv.ParseInt is error")
+	}
+	preCur, err := strconv.ParseInt(preVal, 10, 64)
+	if err != nil {
+		fmt.Println("strconv.ParseInt is error")
+	}
+	cur = cur - preCur
+
+	fmt.Printf("%d", cur)
+	fmt.Printf("11")
+}
+
+func getTotal(timeUnix int64) string {
+	curTime := strconv.FormatInt(timeUnix, 10)
+	Req := "http://localhost:9090/api/v1/query?query=http_server_requests_seconds_count&time="
+	Req += curTime
+	fmt.Printf(Req)
+	resp, err := http.Get(Req)
+	if err != nil {
+		globalLog.Error(err, "http.Get is failure")
+		return "0"
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	bodys := string(body)
+	strReplaceAll := strings.ReplaceAll(bodys, curTime, "\""+curTime+"\"")
+	var r Res
+	err1 := json.Unmarshal([]byte(strReplaceAll), &r)
+	if err1 != nil {
+		globalLog.Error(err, "json.Unmarshal is failure")
+		return "0"
+	}
+	fmt.Println(r)
+	if r.Data.Result == nil || len(r.Data.Result) <= 0 {
+		globalLog.Error(err, "r.Data is nil or r.Data is Empty")
+		return "0"
+	}
+	fmt.Println("type:", r.Data.Result[0].Value[1])
+
+	return r.Data.Result[0].Value[1]
 }

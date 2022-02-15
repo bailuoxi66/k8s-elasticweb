@@ -1,4 +1,0 @@
-## Append samples you want in your CSV to this file as resources ##
-resources:
-- elasticweb_v1_elasticweb.yaml
-#+kubebuilder:scaffold:manifestskustomizesamples
