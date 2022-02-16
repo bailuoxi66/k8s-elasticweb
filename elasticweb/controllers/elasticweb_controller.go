@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os/exec"
 	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"strconv"
@@ -56,6 +57,8 @@ const (
 	MEM_REQUEST = "512Mi"
 	// 单个POD的内存资源上限
 	MEM_LIMIT = "512Mi"
+
+	TIME = 30
 )
 
 type Res struct {
@@ -96,7 +99,12 @@ type ElasticWebReconciler struct {
 var globalLog = log.Log.WithName("global")
 
 func init() {
-	//go timer()
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Println(err)
+		}
+	}()
+	go timer()
 }
 
 func (r *ElasticWebReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -424,21 +432,61 @@ func updateStatus(ctx context.Context, r *ElasticWebReconciler, elasticWeb *elas
 }
 
 func timer() {
-	t := time.NewTicker(3 * time.Second)
+	t := time.NewTicker(TIME * time.Second)
 	defer t.Stop()
-	time.Sleep(4 * time.Second)
+	time.Sleep(TIME * time.Second)
 
 	for {
 		select {
 		case <-t.C:
-			curRes()
+			execSys()
 		}
 	}
 }
 
-func curRes() {
+func ExecCommand(strCommand string) string {
+	cmd := exec.Command("/bin/bash", "-c", strCommand)
+
+	stdout, _ := cmd.StdoutPipe()
+	if err := cmd.Start(); err != nil {
+		fmt.Println("Execute failed when Start:" + err.Error())
+		return ""
+	}
+
+	out_bytes, _ := ioutil.ReadAll(stdout)
+	stdout.Close()
+
+	if err := cmd.Wait(); err != nil {
+		fmt.Println("Execute failed when Wait:" + err.Error())
+		return ""
+	}
+	return string(out_bytes)
+}
+
+func execSys() {
+	curTotal := curRes()
+
+	if curTotal <= 0 {
+		curTotal = 1
+	}
+	str := "config/samples/elasticweb_v1_elasticweb.yaml"
+	s := "sed -i \"\" 's/totalQPS: 10/totalQPS: " + strconv.FormatInt(curTotal, 10) + "/g' " + str
+
+	fmt.Println(s)
+	s = ExecCommand(s)
+	s1 := "kubectl apply -f config/samples/elasticweb_v1_elasticweb.yaml"
+
+	s1 = ExecCommand(s1)
+	fmt.Println(s)
+	fmt.Println(s1)
+	s2 := "sed -i \"\" 's/totalQPS: " + strconv.FormatInt(curTotal, 10) + "/totalQPS: 10" + "/g' " + str
+	fmt.Println(s2)
+	s2 = ExecCommand(s2)
+}
+
+func curRes() int64 {
 	timeUnix := time.Now().Unix()
-	preVal := getTotal(timeUnix - 5)
+	preVal := getTotal(timeUnix - 30)
 	val := getTotal(timeUnix)
 
 	cur, err := strconv.ParseInt(val, 10, 64)
@@ -449,26 +497,32 @@ func curRes() {
 	if err != nil {
 		fmt.Println("strconv.ParseInt is error")
 	}
-	cur = cur - preCur
+	cur = (cur - preCur) / 30
 
 	fmt.Printf("%d", cur)
-	fmt.Printf("11")
+	return cur
 }
 
 func getTotal(timeUnix int64) string {
-	curTime := strconv.FormatInt(timeUnix, 10)
+
+	defer func() {
+		if err := recover(); err != nil {
+		}
+	}()
+
+	curTIME := strconv.FormatInt(timeUnix, 10)
 	Req := "http://localhost:9090/api/v1/query?query=http_server_requests_seconds_count&time="
-	Req += curTime
+	Req += curTIME
 	fmt.Printf(Req)
 	resp, err := http.Get(Req)
 	if err != nil {
-		globalLog.Error(err, "http.Get is failure")
+		globalLog.Info("http.Get is failure")
 		return "0"
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	bodys := string(body)
-	strReplaceAll := strings.ReplaceAll(bodys, curTime, "\""+curTime+"\"")
+	strReplaceAll := strings.ReplaceAll(bodys, curTIME, "\""+curTIME+"\"")
 	var r Res
 	err1 := json.Unmarshal([]byte(strReplaceAll), &r)
 	if err1 != nil {
@@ -477,7 +531,7 @@ func getTotal(timeUnix int64) string {
 	}
 	fmt.Println(r)
 	if r.Data.Result == nil || len(r.Data.Result) <= 0 {
-		globalLog.Error(err, "r.Data is nil or r.Data is Empty")
+		globalLog.Info("r.Data is nil or r.Data is Empty")
 		return "0"
 	}
 	fmt.Println("type:", r.Data.Result[0].Value[1])

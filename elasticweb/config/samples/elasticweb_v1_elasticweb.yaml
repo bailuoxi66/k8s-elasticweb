@@ -12,8 +12,8 @@ spec:
   image: hengyunabc/expose-prometheus-demo:0.0.1-SNAPSHOT
   targetPort: 8080
   mtargetPort: 8090
-  singlePodQPS: 500
-  totalQPS: 200
+  singlePodQPS: 50
+  totalQPS: 10
   resources:
     limits:
       cpu: 800m
