@@ -9,7 +9,7 @@ spec:
   nodePort: 30004
   port: 8081
   podPort: 8080
-  image: hengyunabc/expose-prometheus-demo:0.0.1-SNAPSHOT
+  image: dockerhubyu/expose-prometheus-demo:0.0.1-SNAPSHOT
   targetPort: 8080
   mtargetPort: 8090
   singlePodQPS: 50
